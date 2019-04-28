@@ -1,21 +1,25 @@
 using System;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace Bhell.Components {
 
     [Serializable]
+    [WriteGroup(typeof(LocalToWorld))]
+    [WriteGroup(typeof(LocalToParent))]
     public struct SplinePathAnimation : IComponentData {
+        public int index;
         public float time;
-        public Entity target;
+        public bool isLoop;
     }
 
     [Serializable]
     public struct SplinePathElement : IBufferElementData {
         public float3 point;
         public float3 forward;
-        public float rotation;
-        public float time;
+        public quaternion rotation;
+        public float duration;
 
         public float3 backward {
             get { return - forward; }
