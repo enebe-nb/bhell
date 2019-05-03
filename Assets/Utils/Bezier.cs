@@ -53,5 +53,27 @@ namespace Bhell.Utils {
             }
             return sum;
         }
+
+        public static float GetLength(float3 p0, float3 p1, float3 p2, float[] steps) {
+            float3 point, prevPoint = GetPoint(p0, p1, p2, steps[0]);
+            float sum = 0;
+            for(int i = 1; i < steps.Length; ++i) {
+                point = GetPoint(p0, p1, p2, steps[i]);
+                sum += math.length(point - prevPoint);
+                prevPoint = point;
+            }
+            return sum;
+        }
+
+        public static float GetLength(float3 p0, float3 p1, float3 p2, float3 p3, float[] steps) {
+            float3 point, prevPoint = GetPoint(p0, p1, p2, p3, steps[0]);
+            float sum = 0;
+            for(int i = 1; i < steps.Length; ++i) {
+                point = GetPoint(p0, p1, p2, p3, steps[i]);
+                sum += math.length(point - prevPoint);
+                prevPoint = point;
+            }
+            return sum;
+        }
     }
 }
