@@ -9,27 +9,27 @@ using UnityEngine;
 
 namespace Bhell.Utils {
 
-    public struct ModelArchetype : IDisposable {
+    public struct ModelArchetype {
         private struct MeshNode { public LocalToParent transform; public RenderMesh mesh; }
-        private NativeArray<MeshNode> meshes;
+        private List<MeshNode> meshes;
         private EntityArchetype archetype;
         
         public ModelArchetype(EntityManager manager, string assetName) {
             Stack<GameObject> stack = new Stack<GameObject>();
-            List<MeshNode> nodes = new List<MeshNode>();
+            meshes = new List<MeshNode>();
             stack.Push(Resources.Load<GameObject>(assetName));
             while(stack.Count > 0) {
                 GameObject node = stack.Pop();
                 MeshRenderer renderer = node.GetComponent<MeshRenderer>();
                 MeshFilter filter = node.GetComponent<MeshFilter>();
                 if (renderer != null && filter != null) {
-                    for (int i = 0; i < renderer.materials.Length; ++i) {
-                        nodes.Add(new MeshNode {
+                    for (int i = 0; i < renderer.sharedMaterials.Length; ++i) {
+                        meshes.Add(new MeshNode {
                             transform = new LocalToParent{Value = node.transform.localToWorldMatrix},
                             mesh = new RenderMesh {
-                                mesh = filter.mesh,
-                                material = renderer.materials[i],
-                                subMesh = i >= filter.mesh.subMeshCount ? 0 : i,
+                                mesh = filter.sharedMesh,
+                                material = renderer.sharedMaterials[i],
+                                subMesh = i >= filter.sharedMesh.subMeshCount ? 0 : i,
                                 layer = node.layer,
                                 castShadows = renderer.shadowCastingMode,
                                 receiveShadows = renderer.receiveShadows,
@@ -43,7 +43,6 @@ namespace Bhell.Utils {
                 }
             }
 
-            meshes = new NativeArray<MeshNode>(nodes.ToArray(), Allocator.Persistent);
             archetype = manager.CreateArchetype(
                 typeof(LocalToWorld),
                 typeof(LocalToParent),
@@ -54,7 +53,7 @@ namespace Bhell.Utils {
 
         public void Instantiate(EntityManager manager, Entity parent, bool attachSystemState = true) {
             if (attachSystemState) manager.AddComponent(parent, typeof(DisposeChildrenComponent));
-            NativeArray<Entity> entities = new NativeArray<Entity>(meshes.Length, Allocator.TempJob);
+            NativeArray<Entity> entities = new NativeArray<Entity>(meshes.Count, Allocator.TempJob);
             manager.CreateEntity(archetype, entities);
             for (int i = 0; i < entities.Length; ++i) {
                 manager.SetComponentData(entities[i], new Parent{Value = parent});
@@ -67,7 +66,7 @@ namespace Bhell.Utils {
 
         public void Instantiate(EntityCommandBuffer buffer, Entity parent, bool attachSystemState = true) {
             if (attachSystemState) buffer.AddComponent(parent, new DisposeChildrenComponent());
-            for (int i = 0; i < meshes.Length; ++i) {
+            for (int i = 0; i < meshes.Count; ++i) {
                 Entity entity = buffer.CreateEntity(archetype);
                 buffer.SetComponent(entity, new Parent{Value = parent});
                 buffer.SetComponent(entity, meshes[i].transform);
@@ -77,16 +76,12 @@ namespace Bhell.Utils {
 
         public void Instantiate(EntityCommandBuffer.Concurrent buffer, int jobIndex, Entity parent, bool attachSystemState = true) {
             if (attachSystemState) buffer.AddComponent(jobIndex, parent, new DisposeChildrenComponent());
-            for (int i = 0; i < meshes.Length; ++i) {
+            for (int i = 0; i < meshes.Count; ++i) {
                 Entity entity = buffer.CreateEntity(jobIndex, archetype);
                 buffer.SetComponent(jobIndex, entity, new Parent{Value = parent});
                 buffer.SetComponent(jobIndex, entity, meshes[i].transform);
                 buffer.SetSharedComponent(jobIndex, entity, meshes[i].mesh);
             }
-        }
-
-        public void Dispose() {
-            meshes.Dispose();
         }
     }
 }
